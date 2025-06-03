@@ -1,35 +1,106 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import AuthProvider, { useAuth } from './contexts/AuthContext';
 
-function App() {
-  const [count, setCount] = useState(0)
+import Login               from './pages/Login';
+import PatientDashboard    from './pages/PatientDashboard';
+import AdminDashboard      from './pages/AdminDashboard';
+import ScheduleAppointment from './pages/ScheduleAppointment';
+import DoctorManagement    from './pages/DoctorManagement';
+import UserManagement      from './pages/UserManagement';
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+/**
+ * Componente que maneja rutas privadas:
+ * - Mientras loadingAuth === true (cargando Auth), NO renderiza nada.
+ * - Si user === null (no autenticado), redirige a /login.
+ * - Si user existe, renderiza children.
+ */
+function PrivateRoute({ children }) {
+  const { user, loadingAuth } = useAuth();
+
+  if (loadingAuth) {
+    // Podrías devolver un spinner aquí si quisieras
+    return null;
+  }
+  return user ? children : <Navigate to="/login" replace />;
 }
 
-export default App
+/**
+ * Componente que maneja la ruta /login:
+ * - Mientras loadingAuth === true, NO renderiza nada (pantalla en blanco).
+ * - Si no hay usuario, muestra <Login />.
+ * - Si ya hay usuario, redirige según su rol (patient → "/", admin → "/admin").
+ */
+function LoginRoute() {
+  const { user, role, loadingAuth } = useAuth();
+
+  if (loadingAuth) {
+    return null; // esperando a Firebase
+  }
+  if (!user) {
+    return <Login />;
+  }
+  // Si ya está autenticado, redirige según su rol:
+  return role === 'admin'
+    ? <Navigate to="/admin" replace />
+    : <Navigate to="/"      replace />;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginRoute />} />
+
+        {/* Rutas Privadas */}
+        <Route
+          path="/"
+          element={
+            <PrivateRoute>
+              <PatientDashboard />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <PrivateRoute>
+              <AdminDashboard />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/doctors"
+          element={
+            <PrivateRoute>
+              <DoctorManagement />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/users"
+          element={
+            <PrivateRoute>
+              <UserManagement />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/schedule"
+          element={
+            <PrivateRoute>
+              <ScheduleAppointment />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Cualquier otra ruta, redirigir a "/" */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
+  );
+}
