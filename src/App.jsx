@@ -8,6 +8,7 @@ import AdminDashboard      from './pages/AdminDashboard';
 import ScheduleAppointment from './pages/ScheduleAppointment';
 import DoctorManagement    from './pages/DoctorManagement';
 import UserManagement      from './pages/UserManagement';
+import EditProfile         from './pages/PatientEditProfile';
 
 /**
  * Componente que maneja rutas privadas:
@@ -94,6 +95,15 @@ export default function App() {
           element={
             <PrivateRoute>
               <ScheduleAppointment />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <EditProfile />
             </PrivateRoute>
           }
         />
