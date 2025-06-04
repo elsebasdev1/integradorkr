@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { parseISO, getDay } from 'date-fns';
+import { notifySuccess, notifyError } from '../utils/notify';
 
 const WEEK_DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
@@ -42,7 +43,7 @@ export default function ScheduleAppointment() {
         const uniq = Array.from(new Set(docs.map(d => d.specialty)));
         setSpecialties(uniq);
       } catch (err) {
-        console.error("Error leyendo 'doctors':", err);
+        notifyError('Error al cargar los doctores.');
       }
     })();
   }, []);
@@ -98,8 +99,7 @@ export default function ScheduleAppointment() {
   const handleSubmit = async e => {
     e.preventDefault();
     if (!form.specialty || !form.doctorId || !form.date || !form.time) {
-      setStatusMsg('Completa todos los campos');
-      setTimeout(() => setStatusMsg(''), 3000);
+      notifyError('Faltan campos por completar');
       return;
     }
 
@@ -113,8 +113,7 @@ export default function ScheduleAppointment() {
         )
       );
       if (!clashSnap.empty) {
-        setStatusMsg('Ese horario ya está ocupado. Elige otro.');
-        setTimeout(() => setStatusMsg(''), 4000);
+        notifyError('La fecha ya ha sido agendada');
         return;
       }
 
@@ -126,16 +125,9 @@ export default function ScheduleAppointment() {
         time:       form.time,
         status:     'Pendiente'
       });
-
-      setStatusMsg('Cita agendada exitosamente');
-      setTimeout(() => {
-        setStatusMsg('');
-        nav('/');
-      }, 750);
+      notifySuccess('Cita agendada exitosamente!');
     } catch (err) {
-      console.error('Error guardando la cita:', err);
-      setStatusMsg('Hubo un error al guardar la cita.');
-      setTimeout(() => setStatusMsg(''), 4000);
+      notifyError('Error al agendar la cita, intente más tarde');
     }
   };
 

@@ -6,12 +6,14 @@ import {
   updateDoc,
   doc,
   query,
-  where
+  onSnapshot,
+  deleteDoc 
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { notifySuccess, notifyError } from '../utils/notify';
 
 const formatDate = (isoDateStr) => {
   try {
@@ -21,17 +23,6 @@ const formatDate = (isoDateStr) => {
     return isoDateStr;
   }
 };
-
-const deleteAppointment = async (id) => {
-  if (!window.confirm('¿Deseas eliminar esta cita?')) return;
-  try {
-    await deleteDoc(doc(db, 'appointments', id));
-  } catch (err) {
-    console.error('Error eliminando cita:', err);
-    alert('No se pudo eliminar la cita.');
-  }
-};
-
 
 export default function AdminDashboard() {
   const { logout } = useAuth();
@@ -49,12 +40,6 @@ export default function AdminDashboard() {
 
   // 1. Cargar datos iniciales: citas, doctores y usuarios
   useEffect(() => {
-    // a) Cargar citas
-    async function fetchAppointments() {
-      const snap = await getDocs(collection(db, 'appointments'));
-      setAppointments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }
-
     // b) Cargar doctores (para doctorName)
     async function fetchDoctors() {
       const snap = await getDocs(collection(db, 'doctors'));
@@ -80,7 +65,6 @@ export default function AdminDashboard() {
       setUsersMap(map);
     }
 
-    fetchAppointments();
     fetchDoctors();
     fetchUsers();
   }, []);
@@ -91,8 +75,33 @@ export default function AdminDashboard() {
     setAppointments(apps =>
       apps.map(a => (a.id === id ? { ...a, status: 'Confirmada' } : a))
     );
+    notifySuccess('Cita confirmada!');
   };
 
+  const deleteAppointment = async (id) => {
+  if (!window.confirm('¿Deseas descartar esta cita?')) return;
+  try {
+    await deleteDoc(doc(db, 'appointments', id));
+    notifySuccess('Cita descartada correctamente!');
+  } catch (err) {
+    console.error('Error eliminando cita:', err);
+    alert('No se pudo eliminar la cita.');
+  }
+};
+
+  useEffect(() => {
+  const q = query(collection(db, 'appointments'));
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    setAppointments(data);
+  });
+
+  return () => unsubscribe();
+}, []);
   // 3. Derivar la lista filtrada según statusFilter y searchTerm
     const filteredAppointments = appointments.filter(appt => {
     // 3.a) Filtrar por estado
@@ -121,6 +130,12 @@ export default function AdminDashboard() {
       <h2 className="text-2xl font-semibold">Panel de Administrador</h2>
       <div className="flex gap-2">
         <button
+          onClick={() => nav('/admin/specialties')}
+          className="px-4 py-2 bg-purple-600 text-white rounded-md"
+        >
+          Especialidades
+        </button>         
+        <button
           onClick={() => nav('/admin/doctors')}
           className="px-4 py-2 bg-green-600 text-white rounded-md"
         >
@@ -137,7 +152,7 @@ export default function AdminDashboard() {
           className="px-4 py-2 bg-red-500 text-white rounded-md"
         >
           Salir
-        </button>
+        </button>     
       </div>
     </header>
       {/* ─── Filtros y búsqueda ───────────────────────────── */}
@@ -184,29 +199,33 @@ export default function AdminDashboard() {
             return (
               <li
                 key={appt.id}
-                className="p-4 bg-white rounded-lg shadow flex flex-col sm:flex-row justify-between items-start sm:items-stretch max-w-4xl mx-auto"
+                className="relative p-4 bg-white rounded-lg shadow flex flex-col sm:flex-row justify-between items-start sm:items-stretch max-w-4xl mx-auto"
               >
-                <div>
-                  <p><strong>Paciente:</strong> {patientName}</p>
-                  <p><strong>Dirección:</strong> {patientAddress}</p>
-                  <p><strong>Teléfono:</strong> {patientPhone}</p>
-                  <p><strong>Médico:</strong> {doctorName}</p>
+              <span
+                className={`absolute -top-3 left-4 px-3 py-1 rounded-full text-xs font-semibold shadow
+                  ${appt.status === 'Confirmada' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+              >
+                {appt.status}
+              </span>
+                <div className="flex flex-col sm:flex-row sm:justify-between w-full gap-4">
+                  {/* Columna principal */}
+                  <div className="flex-1 space-y-1">
+                    <p><strong>Médico:</strong> {doctorName}</p>
+                    <p><strong>Especialidad:</strong> {appt.specialty}</p>
                     <p>
-                    <span className="font-medium">Fecha:</span>{' '}
-                    {formatDate(appt.date)}
+                      <strong>Fecha:</strong> {formatDate(appt.date)}
                     </p>
-                  <p><strong>Hora:</strong> {appt.time}</p>
-                  <p><strong>Especialidad:</strong> {appt.specialty}</p>
-                  <p>
-                    <strong>Estado:</strong>{' '}
-                    <span
-                      className={`font-semibold ${
-                        appt.status === 'Confirmada' ? 'text-green-600' : 'text-yellow-600'
-                      }`}
-                    >
-                      {appt.status}
-                    </span>
-                  </p>
+                    <p><strong>Hora:</strong> {appt.time}</p>
+                  </div>
+
+                  {/* Columna adicional */}
+                  <div className="flex-1 space-y-1">
+                    <h3 className="font-semibold text-gray-700 mb-1">Información del Paciente</h3>
+                    <p><strong>Nombre:</strong> {patientName}</p>
+                    <p><strong>Dirección:</strong> {patientAddress}</p>
+                    <p><strong>Teléfono:</strong> {patientPhone}</p>
+                    
+                  </div>
                 </div>
 
                 <div className="flex flex-col justify-center items-end gap-2 sm:w-[200px] ml-auto self-center">
@@ -225,14 +244,6 @@ export default function AdminDashboard() {
                         Descartar
                     </button>
                     </>
-                )}
-                {appt.status === 'Confirmada' && (
-                    <button
-                    onClick={() => deleteAppointment(appt.id)}
-                    className="px-4 py-2 bg-red-500 text-white rounded-md"
-                    >
-                    Cancelar Cita
-                    </button>
                 )}
                 </div>
               </li>

@@ -3,6 +3,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { notifySuccess, notifyError } from '../utils/notify';
 
 export default function EditProfile() {
   const { user } = useAuth();
@@ -43,10 +44,7 @@ export default function EditProfile() {
           });
         }
       } catch (err) {
-        setStatusMsg('No se pudo cargar el perfil.');
-        setTimeout(() => {
-        setStatusMsg('');
-        }, 750); // espera 2.5s antes de navegar
+        notifyError('Ha ocurrido un error al cargar el perfil, intente más tarde');
       } finally {
         setLoading(false);
       }
@@ -65,15 +63,9 @@ export default function EditProfile() {
         address: form.address,
         phone: form.phone
       });
-        setStatusMsg('Perfil actualizado correctamente.');
-        setTimeout(() => {
-        setStatusMsg('');
-        }, 750); // espera 2.5s antes de navegar
+      notifySuccess('Perfil actualizado correctamente!');
     } catch (err) {
-        setStatusMsg('Perfil no actualizado.');
-        setTimeout(() => {
-        setStatusMsg('');
-        }, 750); // espera 2.5s antes de navegar
+      notifyError('Ocurrió un error al actualizar el perfil, intente más tarde');
     }
   };
 

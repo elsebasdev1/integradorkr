@@ -18,6 +18,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format, parseISO, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { notifySuccess, notifyError } from '../utils/notify';
 
 export default function PatientDashboard() {
   const { user, logout } = useAuth();
@@ -71,7 +72,7 @@ export default function PatientDashboard() {
         setProfile(snap.data());
       }
     } catch (err) {
-      console.error('Error cargando perfil:', err);
+      notifyError('Error al cargar el perfil');
     }
   };
 
@@ -95,7 +96,7 @@ export default function PatientDashboard() {
         setDoctorsMap(map);
         setDoctorsList(list);
       } catch (err) {
-        console.error('Error al cargar doctores:', err);
+        notifyError('Error al cargar los doctores');
       }
     }
     fetchDoctors();
@@ -120,7 +121,6 @@ export default function PatientDashboard() {
           }))
         );
       },
-      err => console.error('Error en onSnapshot de citas:', err)
     );
     return unsub;
   }, [user]);
@@ -138,8 +138,7 @@ export default function PatientDashboard() {
         setEditingId(null);
       }
     } catch (err) {
-      console.error('Error eliminando cita:', err);
-      alert('No se pudo eliminar la cita.');
+      notifyError('Error al eliminar la cita');
     }
   };
 
@@ -210,7 +209,7 @@ export default function PatientDashboard() {
           : [];
         setSlotsDisponibles(libres);
       } catch (err) {
-        console.error('Error calculando slots para edición:', err);
+        notifyError('Error al calular el horario del médico');
         setSlotsDisponibles([]);
       }
     }
@@ -223,7 +222,7 @@ export default function PatientDashboard() {
   const saveEdit = async (id) => {
     // Validar que el paciente haya seleccionado doctor, día y hora
     if (!editForm.doctorId || !editForm.date || !editForm.time) {
-      return alert('Completa doctor, día y hora antes de guardar.');
+      return notifyError('Faltan campos por completar');
     }
     try {
       // Verificar colisión: que no exista otra cita distinta con el mismo doctor+día+hora
@@ -239,7 +238,7 @@ export default function PatientDashboard() {
         .map(d => d.id)
         .filter(apptId => apptId !== id); // ignore this appointment itself
       if (collided.length > 0) {
-        return alert('Ya existe otra cita en ese horario. Elige otro.');
+        return notifyError('Ya existe una cita en ese horario');
       }
       // 7.a) Hacer updateDoc cambiando doctorId, day y time
       await updateDoc(doc(db, 'appointments', id), {
@@ -251,9 +250,9 @@ export default function PatientDashboard() {
       setEditingId(null);
       setEditForm({ doctorId: '', date: '', time: '' });
       setSlotsDisponibles([]);
+      notifySuccess('Cita actualizada correctamente!');
     } catch (err) {
-      console.error('Error guardando edición de cita:', err);
-      alert('No se pudo actualizar la cita.');
+      notifyError('Error al actualizar la cita');
     }
   };
 
@@ -337,80 +336,68 @@ export default function PatientDashboard() {
             ? 'No tienes citas agendadas.'
             : 'No se encontraron citas que coincidan con los filtros.'}
         </p>
-      ) : (
+      )
+       : (
         <ul className="space-y-4">
           {visibleAppointments.map((appt) => {
             const doctorName  = doctorsMap[appt.doctorId] || 'Desconocido';
             const isEditing   = editingId === appt.id;
             const isPending   = appt.status === 'Pendiente';
-
+            
             return (
               <li
                 key={appt.id}
-                className="bg-white rounded-lg shadow overflow-hidden"
+                className="relative bg-white rounded-lg shadow"
               >
+              <span
+                className={`absolute -top-3 left-4 px-3 py-1 rounded-full text-xs font-semibold shadow
+                  ${appt.status === 'Confirmada' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+              >
+                {appt.status}
+              </span>           
                 {/* ─── MODO “SOLO LECTURA” DE LA CITA ─────────────────── */}
-                <div className="p-4 flex justify-between items-start">
-                  <div>
-                    <p>
-                      <span className="font-medium">Médico:</span>{' '}
-                      {doctorName}
-                    </p>
-                    <p>
-                      <span className="font-medium">Especialidad:</span>{' '}
-                      {appt.specialty}
-                    </p>
-                    <p>
-                    <span className="font-medium">Fecha:</span>{' '}
-                    {formatDate(appt.date)}
-                    </p>
-                    <p>
-                      <span className="font-medium">Hora:</span> {appt.time}
-                    </p>
+                <div className="p-4 flex flex-col sm:flex-row justify-between items-start text-base space-y-2 sm:space-y-0 sm:space-x-4">
+                  {/* Columna de información */}
+                  <div className="space-y-1">
+                    <p><strong>Médico:</strong> {doctorName}</p>
+                    <p><strong>Especialidad:</strong> {appt.specialty}</p>
+                    <p><strong>Fecha:</strong> {formatDate(appt.date)}</p>
+                    <p><strong>Hora:</strong> {appt.time}</p>                 
                   </div>
-                  <div className="flex flex-col gap-2 items-end">
-                    <span
-                      className={`font-semibold ${
-                        appt.status === 'Confirmada'
-                          ? 'text-green-600'
-                          : 'text-yellow-600'
-                      }`}
-                    >
-                      {appt.status}
-                    </span>
-                    {/* Si la cita está pendiente, mostramos botones Editar + Eliminar */}
+
+                  {/* Estado y acciones */}
+                  <div className="flex flex-col gap-2 items-end self-center sm:w-[200px] ml-auto">
                     {!isEditing && (
-                    <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2 flex-wrap">
                         {isPending && (
-                        <>
+                          <>
                             <button
-                            onClick={() => startEditing(appt)}
-                            className="px-3 py-1 bg-blue-500 text-white rounded"
+                              onClick={() => startEditing(appt)}
+                              className="px-3 py-1 bg-blue-500 text-white rounded"
                             >
-                            Editar
+                              Editar
                             </button>
                             <button
-                            onClick={() => deleteAppointment(appt.id)}
-                            className="px-3 py-1 bg-red-500 text-white rounded"
+                              onClick={() => deleteAppointment(appt.id)}
+                              className="px-3 py-1 bg-red-500 text-white rounded"
                             >
-                            Cancelar Cita
+                              Cancelar Cita
                             </button>
-                        </>
+                          </>
                         )}
 
                         {appt.status === 'Confirmada' && (
-                        <button
+                          <button
                             onClick={() => deleteAppointment(appt.id)}
                             className="px-3 py-1 bg-red-500 text-white rounded"
-                        >
+                          >
                             Cancelar Cita
-                        </button>
+                          </button>
                         )}
-                    </div>
+                      </div>
                     )}
                   </div>
                 </div>
-
                 {/* ─── MODO EDICIÓN INLINE ────────────────────────────── */}
                 {isEditing && isPending && (
                   <div className="border-t px-4 py-4 bg-gray-50">
@@ -499,16 +486,16 @@ export default function PatientDashboard() {
                       {/* ▷ Botones Guardar Cambios / Cancelar ▷ */}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => saveEdit(appt.id)}
-                          className="flex-1 py-2 bg-indigo-600 text-white rounded"
-                        >
-                          Guardar cambios
-                        </button>
-                        <button
                           onClick={cancelEditing}
                           className="flex-1 py-2 bg-gray-400 text-white rounded"
                         >
                           Cancelar
+                        </button>
+                        <button
+                          onClick={() => saveEdit(appt.id)}
+                          className="flex-1 py-2 bg-indigo-600 text-white rounded"
+                        >
+                          Guardar cambios
                         </button>
                       </div>
                     </div>

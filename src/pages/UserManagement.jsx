@@ -64,8 +64,8 @@ export default function UserManagement() {
             onChange={e => setRoleFilter(e.target.value)}
           >
             <option value="all">Todos</option>
-            <option value="patient">Patient</option>
-            <option value="admin">Admin</option>
+            <option value="patient">Paciente</option>
+            <option value="admin">Administrador</option>
           </select>
         </div>
 

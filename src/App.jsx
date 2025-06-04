@@ -1,59 +1,51 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import AuthProvider, { useAuth } from './contexts/AuthContext';
 
-import Login               from './pages/Login';
-import PatientDashboard    from './pages/PatientDashboard';
-import AdminDashboard      from './pages/AdminDashboard';
+import Login from './pages/Login';
+import PatientDashboard from './pages/PatientDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import ScheduleAppointment from './pages/ScheduleAppointment';
-import DoctorManagement    from './pages/DoctorManagement';
-import UserManagement      from './pages/UserManagement';
-import EditProfile         from './pages/PatientEditProfile';
+import DoctorManagement from './pages/DoctorManagement';
+import UserManagement from './pages/UserManagement';
+import EditProfile from './pages/PatientEditProfile';
+import SpecialtyManagement from './pages/SpecialtyManagement';
 
-/**
- * Componente que maneja rutas privadas:
- * - Mientras loadingAuth === true (cargando Auth), NO renderiza nada.
- * - Si user === null (no autenticado), redirige a /login.
- * - Si user existe, renderiza children.
- */
 function PrivateRoute({ children }) {
   const { user, loadingAuth } = useAuth();
-
-  if (loadingAuth) {
-    // Podrías devolver un spinner aquí si quisieras
-    return null;
-  }
+  if (loadingAuth) return null;
   return user ? children : <Navigate to="/login" replace />;
 }
 
-/**
- * Componente que maneja la ruta /login:
- * - Mientras loadingAuth === true, NO renderiza nada (pantalla en blanco).
- * - Si no hay usuario, muestra <Login />.
- * - Si ya hay usuario, redirige según su rol (patient → "/", admin → "/admin").
- */
 function LoginRoute() {
   const { user, role, loadingAuth } = useAuth();
-
-  if (loadingAuth) {
-    return null; // esperando a Firebase
-  }
-  if (!user) {
-    return <Login />;
-  }
-  // Si ya está autenticado, redirige según su rol:
-  return role === 'admin'
-    ? <Navigate to="/admin" replace />
-    : <Navigate to="/"      replace />;
+  if (loadingAuth) return null;
+  return !user
+    ? <Login />
+    : role === 'admin'
+      ? <Navigate to="/admin" replace />
+      : <Navigate to="/" replace />;
 }
 
 export default function App() {
   return (
     <AuthProvider>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            borderRadius: '8px',
+            background: '#fff',
+            color: '#333',
+          },
+        }}
+      />
+
+      {/* Rutas de la aplicación */}
       <Routes>
         <Route path="/login" element={<LoginRoute />} />
 
-        {/* Rutas Privadas */}
         <Route
           path="/"
           element={
@@ -108,7 +100,15 @@ export default function App() {
           }
         />
 
-        {/* Cualquier otra ruta, redirigir a "/" */}
+        <Route
+          path="/admin/specialties"
+          element={
+            <PrivateRoute>
+              <SpecialtyManagement />
+            </PrivateRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
