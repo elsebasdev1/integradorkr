@@ -4,8 +4,8 @@ Este es un sistema web completo de **gestión de citas médicas** desarrollado c
 
 ## 📸 Capturas
 
-![Vista del Dashboard](https://user-images.githubusercontent.com/PatientDashboard.png)
-![Vista del Dashboard](https://user-images.githubusercontent.com/AdminDashboard.png)
+![Patient](https://github.com/user-attachments/assets/29566aa6-c189-4b2b-b087-ad7a04cec07f)
+![Admin](https://github.com/user-attachments/assets/3153c4db-6384-4602-9439-5ff854517cbd)
 
 ## 🚀 Tecnologías Utilizadas
 
@@ -95,7 +95,7 @@ src/
 ## 📘 Documentación
 
 - [Informe Técnico del Proyecto](./Informe%20Citas%20Medicas.pdf)
-- [Manual de Usuario](./Manual%20de%20Usuario%20Citas%20Medicas.pdf)
+- [Manual de Usuario](https://github.com/user-attachments/files/20601339/Manual.de.Usuario.Citas.Medicas.pdf)
 
 ## ✅ Buenas Prácticas Aplicadas
 
